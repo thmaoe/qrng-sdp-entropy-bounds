@@ -51,7 +51,7 @@ def getH3(ps, N, lambdas, Rs, cm, nB=2, hsrc=0):
     nB : int
         Number of outcomes.
     hsrc : float
-        Entropy penalty subtracted from each value (e.g. for an imperfect source).
+        Entropy penalty from the source (classical fluctuations).
 
     Returns
     -------
@@ -88,7 +88,7 @@ def getH3min(ps, N, mus, w, nB=2, hsrc=0):
     nB : int
         Number of outcomes.
     hsrc : float
-        Entropy penalty subtracted from each value (e.g. for an imperfect source).
+        Entropy penalty subtracted from the source (classical flutuations).
 
     Returns
     -------

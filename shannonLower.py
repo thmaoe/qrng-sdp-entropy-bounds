@@ -243,9 +243,9 @@ def getHDual(delta, p, px):
     H : float
         Lower bound on the entropy.
     Lambdas : list of dict
-        Lagrange multipliers lambdas[b][x], one dict per quadrature node.
+        Lagrange multipliers lambdas[b][x], useful for min tradeoff function.
     Rs : list of np.ndarray
-        Real part of the matrix Lagrange multiplier, one per quadrature node.
+        Real part of the matrix Lagrange multiplier, useful for min tradeoff function.
     cm : float
         quadrature constant.
     """

@@ -1,0 +1,5 @@
+__pycache__
+CodePaper/
+old/
+.vscode/
+.DS_Store

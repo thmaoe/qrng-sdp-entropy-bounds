@@ -46,7 +46,7 @@ All SDPs are solved with **MOSEK**, which needs a license (free for academics).
 
 ### `ShannonGEAT.py`: finite-size bounds with the GEAT
 
-- `getH3(ps, N, lambdas, Rs, cm, nB=2, hsrc=0)`: GEAT bound from the Shannon dual (`shannonLower.getHDual`), for `N` rounds, evaluated over the list of distributions `ps`. `hsrc` is a penalty subtracted from the entropy (e.g. imperfect source).
+- `getH3(ps, N, lambdas, Rs, cm, nB=2, hsrc=0)`: GEAT bound from the Shannon dual (`shannonLower.getHDual`), for `N` rounds, evaluated over the list of distributions `ps`. `hsrc` is the entropy corresponding to classical flutuation in the source.
 - `getH3min(ps, N, mus, w, nB=2, hsrc=0)`: same from the H_min dual (`HminLower.getHminGEAT`).
 
 ### `common.py`: shared helpers

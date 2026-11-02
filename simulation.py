@@ -99,7 +99,7 @@ def pick_x(px1):
 
 
 def get_stat(data, deadtime=False):
-    """Estimate p(b|x) from a list of measurement results.
+    """Estimate p(b|x) from a list of measurement results, i.e frequencies.
 
     Parameters
     ----------
@@ -224,7 +224,7 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
     Parameters
     ----------
     alpha : float
-        Amplitude of the coherent state(s).
+        Amplitude of the coherent state(s) (real).
     px1 : float
         Probability of choosing input x = 1.
     impl : str
@@ -241,7 +241,7 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
     d : float
         Threshold of the inconclusive region (impl '3' only).
     pnoise : float
-        Weight of uniform noise mixed into p[1][x] and p[2][x]. Only usable for BPSK (impl '2')
+        Model for BPSK as in Davide's paper. Only usable for BPSK (impl '2')
 
     Returns
     -------
