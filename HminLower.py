@@ -1,47 +1,98 @@
-## Functions to get lower bound on hmin.
+"""Lower bound on the min-entropy H_min.
+
+By default Eve guesses the coarse-grained variable c (inconclusive / conclusive).
+With guess_b=True she guesses the 3 outcomes b instead (this does not change anything for Photon Number ('0') and BPSK ('2')).
+
+Only for the scenario without an input y for Bob (impl = 0 in shannonLower).
+"""
+
+import itertools
 
 import cvxpy as cp
 import numpy as np
 
-def getHmin(p, delta, px): ##this works only for implementation 1
+from common import get_rhos
 
-    H00 = cp.Variable((2,2), hermitian = True)
-    H01 = cp.Variable((2,2), hermitian = True)
-    H10 = cp.Variable((2,2), hermitian = True)
-    H11 = cp.Variable((2,2), hermitian = True)
-
-    muinc0 = cp.Variable(1)
-    muinc1 = cp.Variable(1)
-    mu00 = cp.Variable(1)
-    mu01 = cp.Variable(1)
-    mu10 = cp.Variable(1)
-    mu11 = cp.Variable(1)
-
-    rho0 = np.array([[1.,0],[0,0]])
-    rho1 = np.array([[delta**2, delta*np.sqrt(1-delta**2)], [delta*np.sqrt(1-delta**2), 1-delta**2]])
-    rho1 = rho1 / np.trace(rho1)
-
-    constraints = [(rho0 * ((1-px) - muinc0) + rho1 * (px - muinc1) + H00 - 0.5*cp.trace(H00)*np.eye(2)) << 0] #b=inc
-    constraints += [(rho0 * ((1-px) - muinc0) - rho1 * (muinc1) + H01 - 0.5*cp.trace(H01)*np.eye(2)) << 0]
-    constraints += [(-rho0 * (muinc0) + rho1 * (px - muinc1) + H10 - 0.5*cp.trace(H10)*np.eye(2)) << 0]
-    constraints += [(-rho0 * (muinc0) - rho1 * (muinc1) + H11 - 0.5*cp.trace(H11)*np.eye(2)) << 0]
-
-    constraints += [(-rho0 * (mu00) - rho1 * (mu01) + H00 - 0.5*cp.trace(H00)*np.eye(2)) << 0] #b=0
-    constraints += [(-rho0 * (mu00) + rho1 * (px - mu01) + H01 - 0.5*cp.trace(H01)*np.eye(2)) << 0]
-    constraints += [(rho0 * ((1-px) - mu00) - rho1 * (mu01) + H10 - 0.5*cp.trace(H10)*np.eye(2)) << 0]
-    constraints += [(rho0 * ((1-px) - mu00) + rho1 * (px - mu01) + H11 - 0.5*cp.trace(H11)*np.eye(2)) << 0]
-
-    constraints += [(-rho0 * (mu10) - rho1 * (mu11) + H00 - 0.5*cp.trace(H00)*np.eye(2)) << 0] #b=1
-    constraints += [(-rho0 * (mu10) + rho1 * (px - mu11) + H01 - 0.5*cp.trace(H01)*np.eye(2)) << 0]
-    constraints += [(rho0 * ((1-px) - mu10) - rho1 * (mu11) + H10 - 0.5*cp.trace(H10)*np.eye(2)) << 0]
-    constraints += [(rho0 * ((1-px) - mu10) + rho1 * (px - mu11) + H11 - 0.5*cp.trace(H11)*np.eye(2)) << 0]
+# Map from outcome b to the value Eve guesses, and order in which the constraint blocks are built
+GUESS_C = {2: 0, 0: 1, 1: 1}  # c: b = 2 (inconclusive) -> 0, b in {0, 1} (conclusive) -> 1
+ORDER_C = (2, 0, 1)
+GUESS_B = {0: 0, 1: 1, 2: 2}  # b itself
+ORDER_B = (0, 1, 2)
 
 
-    obj = cp.real((muinc0 * p[2][0] + muinc1 * p[2][1] + mu10 * p[1][0] + mu11 * p[1][1] + mu01 * p[0][1] + mu00 * p[0][0]))
+def _solve_hmin_sdp(p, delta, px, guess_b=False):
+    """Build and solve the H_min SDP shared by `getHmin` and `getHminGEAT`.
 
-    obj = cp.real(obj)
+    For every outcome b and every guess pair g = (g0, g1) (Eve guesses g_x when the input is x):
+
+        sum_x rho_x * (px_x * [g_x == guess(b)] - mu_bx) + H_g - 1/2 tr(H_g) id  <=  0
+
+    with px_0 = 1 - px, px_1 = px, and guess(b) given by GUESS_C or GUESS_B.
+
+    Returns the solved cvxpy problem and the dual variables mu[b][x] (as cvxpy Variables).
+    """
+    guess, order = (GUESS_B, ORDER_B) if guess_b else (GUESS_C, ORDER_C)
+    n_guess = len(set(guess.values()))
+
+    H = {g: cp.Variable((2, 2), hermitian=True) for g in itertools.product(range(n_guess), repeat=2)}
+    mu = {b: {x: cp.Variable(1) for x in (0, 1)} for b in (2, 0, 1)}
+
+    rho = get_rhos(delta)
+    pxs = [1-px, px]
+
+    constraints = []
+    for b in order:
+        for g, Hg in H.items():
+            terms = [rho[x] * (pxs[x] - mu[b][x]) if g[x] == guess[b] else -rho[x] * (mu[b][x])
+                     for x in (0, 1)]
+            constraints += [(terms[0] + terms[1] + Hg - 0.5*cp.trace(Hg)*np.eye(2)) << 0]
+
+    obj = cp.real(mu[2][0] * p[2][0] + mu[2][1] * p[2][1] + mu[1][0] * p[1][0] + mu[1][1] * p[1][1] + mu[0][1] * p[0][1] + mu[0][0] * p[0][0])
 
     prob = cp.Problem(cp.Minimize(obj), constraints)
-    prob.solve(solver = "MOSEK")
+    prob.solve(solver="MOSEK")
 
+    return prob, mu
+
+
+def getHmin(p, delta, px, guess_b=False):
+    """Lower bound on H_min (no input y for Bob; any implementation '0' to '3').
+
+    Parameters
+    ----------
+    p : dict
+        Probabilities p[b][x], b in {0, 1, 2} (2 = inconclusive), x in {0, 1}.
+    delta : float
+        Overlap between the two states sent.
+    px : float
+        Probability of input x = 1.
+    guess_b : bool
+        False (default): Eve guesses c (inconclusive / conclusive).
+        True: Eve guesses the 3 outcomes b.
+
+    Returns
+    -------
+    float
+        -log2 of the optimal guessing probability.
+    """
+    prob, _ = _solve_hmin_sdp(p, delta, px, guess_b)
     return -np.log2(prob.value)
+
+
+def getHminGEAT(p, delta, px, guess_b=False):
+    """Same SDP as `getHmin`, returning what is needed for the GEAT.
+
+    Parameters
+    ----------
+    p, delta, px, guess_b :
+        See `getHmin`.
+
+    Returns
+    -------
+    value : float
+        Optimal guessing probability (not its -log2).
+    mus : dict
+        Optimal dual variables mus[b][x].
+    """
+    prob, mu = _solve_hmin_sdp(p, delta, px, guess_b)
+    return prob.value, {b: {x: mu[b][x].value for x in (0, 1)} for b in (2, 1, 0)}
