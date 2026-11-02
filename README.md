@@ -1,6 +1,6 @@
 # xxxx
 
-*still need to update that with paper. Also will need to add names etc.*
+*still need to update that with paper. Also will need to add names etc. Also add thesis for details on supp things.*
 
 - asymptotic bounds on the **Shannon entropy** (BFF method) and on the **min-entropy** H_min (SDPs),
 - finite-size bounds on the **smooth min-entropy** with the **GEAT** (Generalized Entropy Accumulation Theorem).
