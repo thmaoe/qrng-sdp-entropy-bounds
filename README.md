@@ -1,6 +1,6 @@
 # xxxx
 
-Code accompagnying the paper xxx. It allows to various 
+*still need to update that with paper. Also will need to add names etc.*
 
 - asymptotic bounds on the **Shannon entropy** (BFF method) and on the **min-entropy** H_min (SDPs),
 - finite-size bounds on the **smooth min-entropy** with the **GEAT** (Generalized Entropy Accumulation Theorem).
