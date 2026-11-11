@@ -43,52 +43,26 @@ def _get_delta(alpha, impl):
         return exp(-2*abs(alpha)**2)
 
 
-def measure(p, eff=1, impl='0'):
+def measure(p):
     """Sample the outcome b of a single measurement.
 
     Parameters
     ----------
     p : list of float
         Probabilities [p(0|x), p(1|x), p(2|x)] for the input x of this round.
-    eff : float
-        Detector efficiency (only used for impl '0' and '1').
-    impl : str
-        Implementation ('0', '1', '2' or '3').
+        Detector efficiency must already be included (see `getProbas`).
 
     Returns
     -------
     int
         Outcome b in {0, 1, 2}. For impl '0' and '2', 2 means "0" (no click).
     """
-    if impl == '0':
-        if np.random.rand() < p[1]:
-            if np.random.rand() < eff:
-                return 1
-            return 2  # detector missed the photon
-        return 2
-
-    elif impl == '1':
-        r = np.random.rand()     # for the measurement
-        reff = np.random.rand()  # for the efficiency
-
-        if r < p[0]:
-            return 0 if reff < eff else 2
-        elif r < p[0] + p[1]:
-            return 1 if reff < eff else 2
-        return 2
-
-    elif impl == '2':
-        if np.random.rand() < p[1]:
-            return 1
-        return 2
-
-    elif impl == '3':
-        r = np.random.rand()
-        if r < p[0]:
-            return 0
-        elif r < p[0] + p[1]:
-            return 1
-        return 2
+    r = np.random.rand()
+    if r < p[0]:
+        return 0
+    elif r < p[0] + p[1]:
+        return 1
+    return 2
 
 
 def pick_x(px1):
@@ -98,7 +72,7 @@ def pick_x(px1):
     return 0
 
 
-def get_stat(data, deadtime=False):
+def get_stat(data, px, nPoints, deadtime=False):
     """Estimate p(b|x) from a list of measurement results, i.e frequencies.
 
     Parameters
@@ -117,23 +91,16 @@ def get_stat(data, deadtime=False):
         Raw counts counts[b][x].
     """
     counts = {0: {0: 0, 1: 0}, 1: {0: 0, 1: 0}, 2: {0: 0, 1: 0}}
-    total = {0: 0, 1: 0}
 
     for b, x in data:
         counts[b][x] += 1
-        total[x] += 1
 
-    p = {b: {x: (counts[b][x] / total[x]) if total[x] > 0 else 0 for x in (0, 1)}
-         for b in (0, 1, 2)}
+    p = {b: {x: (counts[b][x] / (nPoints*px[x])) for x in (0, 1)} for b in (0, 1, 2)} ## not using empirical p(x), as in (D15)!
 
     for x in (0, 1):
-        N_total = total[x]
         N_click = counts[0][x] + counts[1][x]
 
-        if N_total == 0:
-            continue
-
-        click_rate = (N_click / N_total) * PULSE_RATE
+        click_rate = (N_click / nPoints) * PULSE_RATE
         cd = 1 / (1 + TD * click_rate) if deadtime else 1
 
         _rescale_clicks(p, x, cd)
@@ -232,7 +199,7 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
     nPoints : int
         Number of rounds.
     eff : float
-        Detector efficiency (applied when sampling, impl '0' and '1').
+        Detector efficiency (impl '0' and '1'), modelled as a beam splitter as in `getProbas`.
     deadtime : bool
         If True, apply the dead-time correction when computing the statistics.
     badSource : bool
@@ -255,7 +222,7 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
 
     data = []
     alphas = []
-    _, p = getProbas(alpha, 1, 0, impl, False, d)  # dead time is applied when collecting the stats
+    _, p = getProbas(alpha, eff, 0, impl, False, d)  # efficiency included here; dead time is applied when collecting the stats
     if pnoise != 0:
         _add_noise(p, pnoise)
 
@@ -267,13 +234,13 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
                 # the source is not perfect so it sends |alpha + delta>
                 alpha = goodAlpha + np.random.normal(0, 0.05/(2*goodAlpha))
                 alphas.append(alpha)
-            _, p = getProbas(alpha, 1, 0, impl, False, d)
+            _, p = getProbas(alpha, eff, 0, impl, False, d)
             if pnoise != 0:
                 _add_noise(p, pnoise)
 
         x = pick_x(px1)
         p_ = [p[b][x] for b in range(3)]
-        b = measure(p_, eff, impl)
+        b = measure(p_)
         data.append((b, x))
 
     if badSource:
@@ -282,7 +249,7 @@ def doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, bad
     else:
         delta = _get_delta(alpha, impl)
 
-    stats = get_stat(data, deadtime)
+    stats = get_stat(data, {0:1-px1, 1:px1}, nPoints, deadtime)
 
     if badSource:
         return alphamax, delta, stats
