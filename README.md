@@ -32,7 +32,7 @@ All SDPs are solved with **MOSEK**, which needs a license (free for academics).
 
 - `getProbas(alpha, eff, dc, impl, deadtime=False, d=0)`: theoretical `delta` and `p(b|x)` for an encoding, with detector efficiency `eff`, dark counts `dc`, optional detector dead time and threshold `d` (encoding `'3'`).
 - `doSimul(alpha, px1=1/2, impl='0', nPoints=100000, eff=1, deadtime=False, badSource=False, d=0, pnoise=0)`: simulates `nPoints` rounds and returns `(delta, (p, counts))`, or `(alphamax, delta, (p, counts))` with `badSource=True`. `pnoise` (noise model) is only meant for BPSK (`'2'`).
-- Lower-level helpers: `measure(p, eff, impl)` samples one outcome, `pick_x(px1)` samples the input, `get_stat(data, deadtime)` estimates `p(b|x)` from a list of `(b, x)`.
+- Lower-level helpers: `measure(p)` samples one outcome (detector efficiency must already be included in `p`, see `getProbas`), `pick_x(px1)` samples the input, `get_stat(data, px, nPoints, deadtime=False)` estimates `p(b|x)` (frequencies) from a list of `(b, x)`, using the fixed `p(x)` given in `px` rather than the empirical one, as in (D15).
 
 ### `shannonLower.py`: Shannon-entropy lower bound (BFF)
 
@@ -46,8 +46,11 @@ All SDPs are solved with **MOSEK**, which needs a license (free for academics).
 
 ### `ShannonGEAT.py`: finite-size bounds with the GEAT
 
-- `getH3(ps, N, lambdas, Rs, cm, nB=2, hsrc=0)`: GEAT bound from the Shannon dual (`shannonLower.getHDual`), for `N` rounds, evaluated over the list of distributions `ps`. `hsrc` is the entropy corresponding to classical flutuation in the source.
-- `getH3min(ps, N, mus, w, nB=2, hsrc=0)`: same from the H_min dual (`HminLower.getHminGEAT`).
+- `Hgeat(ps, delta, nPoints, pct, route, px, hsrc=0, verbose=False)`: full wrapped function giving the GEAT lower bound. `ps` is a list of distributions (blocks of `nPoints` rounds), the first one being used as reference. `route` is `"bff"` or `"hmin"`, `pct` is the percentage of the min-tradeoff function to use, `px` is the probability that `x = 1`, and `hsrc` is the entropy penalty from the source (classical fluctuations). With `verbose=True`, prints how many blocks were used and which ones.
+- `getfBFF(p, lambdas, Rs, cm, hsrc=0)`: min-tradeoff function for the BFF route, from the multipliers returned by `shannonLower.getHDual`.
+- `getfHmin(p, mus, w, hsrc=0)`: min-tradeoff function for the H_min route, from the dual variables returned by `HminLower.getHminGEAT` (`w` is the point at which -log2 is linearised, typically the guessing probability).
+- `getH3(ps, N, lambdas, Rs, cm, f_ref, pct=0.95, hsrc=0, nB=2)`: GEAT lower bound with the BFF route, for `N` rounds, over the list of distributions `ps`. `f_ref` is the reference min-tradeoff value and `pct` the percentage of it used for `h_th`.
+- `getH3min(ps, N, mus, w, f_ref, pct=0.95, hsrc=0, nB=2)`: same with the H_min route.
 
 ### `common.py`: shared helpers
 
