@@ -5,12 +5,11 @@
 - asymptotic bounds on the **Shannon entropy** (BFF method) and on the **min-entropy** H_min (SDPs),
 - finite-size bounds on the **smooth min-entropy** with the **GEAT** (Generalized Entropy Accumulation Theorem).
 
-## Notebooks
+## Notebook
 
 | Notebook | Content |
 |---|---|
 | `results_paper.ipynb` | Reproduces the figures and results of the paper: photon-number and BPSK encodings (ideal case, bad detector / source, noise model, block-size study, finite size, real data). |
-| `results.ipynb` | Additional results not in the paper: time-bin encoding, photon number, BPSK with and without inconclusive outcome (choice of `d`), comparison of the `c` and `b` variables, and the Gram + BFF bounds from `GraamBFF.py` (**experimental**). |
 
 ## Installation
 
